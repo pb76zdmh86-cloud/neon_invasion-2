@@ -366,6 +366,7 @@ class AlienInvasion:
         sys.exit()
 
     def _toggle_fullscreen(self):
+        old_size = self.screen.get_size()
         self.fullscreen = not self.fullscreen
         if self.fullscreen:
             self.display = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
@@ -382,6 +383,7 @@ class AlienInvasion:
         self.ship.center_ship()
         for sprite in self.bullets.sprites() + self.aliens.sprites()+self.bonuses.sprites():
             sprite.screen = self.screen
+        self._fit_aliens_to_screen(old_size)
         # экраны и HUD пересоздаём: внутри них и поверхность, и координаты кнопок
         self.sb = Scoreboard(self)
         self.menu = Menu(self)
@@ -389,6 +391,17 @@ class AlienInvasion:
         self.game_over = GameOver(self)
         self.settings_screen = SettingsScreen(self)
         self.records_screen = RecordsScreen(self)
+
+    def _fit_aliens_to_screen(self, old_size):
+        """Сохраняет относительное положение врагов при изменении размера поля."""
+        width, height = self.screen.get_size()
+        for alien in self.aliens:
+            old_range = max(1, old_size[0] - alien.rect.width)
+            new_range = max(0, width - alien.rect.width)
+            alien.x = max(0, min(new_range, alien.x / old_range * new_range))
+            alien.base_y *= height / max(1, old_size[1])
+            alien.rect.x = round(alien.x)
+            alien.rect.y = round(alien.base_y)
 
     # ------------------------------------------------------------------ #
     # Play button / game (re)start
@@ -665,10 +678,19 @@ class AlienInvasion:
         )
 
     def _check_fleet_edges(self):
-        for alien in self.aliens.sprites():
-            if alien.check_edges():
-                self._change_fleet_direction()
-                break
+        if not self.aliens:
+            return
+        left = min(alien.rect.left for alien in self.aliens)
+        right = max(alien.rect.right for alien in self.aliens)
+        width = self.screen.get_width()
+        direction = self.settings.fleet_direction
+        if (direction > 0 and right >= width) or (direction < 0 and left <= 0):
+            # Возвращаем флот внутрь поля, чтобы он не разворачивался каждый кадр.
+            shift = width - right if direction > 0 else -left
+            for alien in self.aliens:
+                alien.x += shift
+                alien.rect.x = round(alien.x)
+            self._change_fleet_direction()
 
     def _change_fleet_direction(self):
         for alien in self.aliens.sprites():

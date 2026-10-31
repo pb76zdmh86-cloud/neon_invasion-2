@@ -18,6 +18,12 @@ from triple_shot_bonus import TripleShotBonus
 class GameTests(unittest.TestCase):
     def setUp(self):
         random.seed(7)
+        folder = tempfile.TemporaryDirectory()
+        self.addCleanup(folder.cleanup)
+        for name in ("SAVE_DIR",):
+            replacement = patch("save_paths." + name, Path(folder.name) / name)
+            replacement.start()
+            self.addCleanup(replacement.stop)
         self.game = AlienInvasion()
         self.game.settings.zen_mode = False
         self.game._start_new_game()
@@ -84,6 +90,33 @@ class GameTests(unittest.TestCase):
         self.assertIs(g.records_screen.screen, g.screen)
         g._toggle_fullscreen()
         self.assertIs(g.records_screen.screen, g.screen)
+
+    def test_resize_keeps_aliens_inside_and_avoids_repeated_drops(self):
+        g = self.game
+        g.aliens.empty()
+        g._create_alien(1300, 200)
+        g.screen = pygame.Surface((800, 600))
+        alien = next(iter(g.aliens))
+        alien.screen = g.screen
+        g._fit_aliens_to_screen((1600, 800))
+        self.assertGreaterEqual(alien.rect.left, 0)
+        self.assertLessEqual(alien.rect.right, 800)
+        self.assertEqual(alien.base_y, 150)
+        alien.x = 850
+        alien.rect.x = 850
+        g.settings.fleet_direction = 1
+        start_y = alien.base_y
+        for _ in range(3):
+            g.aliens.update(1 / 60)
+            g._check_fleet_edges()
+        self.assertEqual(alien.base_y, start_y + g.settings.fleet_drop_speed)
+        self.assertEqual(g.settings.fleet_direction, -1)
+        self.assertLessEqual(alien.rect.right, 800)
+
+    def test_quit_survives_save_error(self):
+        with patch.object(Path, "write_text", side_effect=OSError("Нет места")), patch("builtins.print"):
+            with self.assertRaises(SystemExit):
+                self.game._quit_game()
 
     def test_scripted_play(self):
         g = self.game

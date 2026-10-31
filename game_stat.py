@@ -1,7 +1,4 @@
-import json
-from pathlib import Path
-
-HIGH_SCORE_FILE = Path(__file__).resolve().parent / "highscore.json"
+from save_paths import get_save_path, read_json, write_json
 
 
 class Game_state:
@@ -9,6 +6,7 @@ class Game_state:
 
     def __init__(self, ai_game):
         self.settings = ai_game.settings
+        self.high_score_file = get_save_path("highscore.json")
         self.high_score = self._load_high_score()
         self.reset_stat()
 
@@ -55,18 +53,10 @@ class Game_state:
                 self.combo_count = 0
 
     def _load_high_score(self):
-        try:
-            with open(HIGH_SCORE_FILE, "r") as f:
-                data = json.load(f)
-                return int(data.get("high_score", 0))
-        except (FileNotFoundError, json.JSONDecodeError, ValueError):
-            return 0
+        score = read_json(self.high_score_file).get("high_score", 0)
+        return score if type(score) is int and score >= 0 else 0
 
     def save_high_score(self):
         if self.settings.zen_mode or not self.ranked_run:
             return
-        try:
-            with open(HIGH_SCORE_FILE, "w") as f:
-                json.dump({"high_score": self.high_score}, f)
-        except OSError:
-            pass
+        return write_json(self.high_score_file, {"high_score": self.high_score})

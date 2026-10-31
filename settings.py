@@ -1,5 +1,5 @@
+from save_paths import get_save_path, read_json, write_json
 from pathlib import Path
-import json
 
 class Settings:
     """Хранит все настраиваемые параметры игры."""
@@ -106,7 +106,7 @@ class Settings:
 
         self.initialize_dynamic_settings()
 
-        self.settings_file = Path(__file__).parent / "settings.json"
+        self.settings_file = get_save_path("settings.json")
         self._load_saved()
 
     def initialize_dynamic_settings(self):
@@ -126,25 +126,24 @@ class Settings:
         self.aliens_points = int(self.aliens_points * self.aliens_scale)
 
     def _load_saved(self):
-     try:
-        data = json.loads(self.settings_file.read_text())
-        self.music_volume = data.get("music_volume", self.music_volume)
-        self.effects_volume = data.get("effects_volume", self.effects_volume)
-        self.zen_mode = data.get("zen_mode",self.zen_mode)
+        data = read_json(self.settings_file)
+        for name in ("music_volume", "effects_volume"):
+            value = data.get(name)
+            if type(value) is int:
+                setattr(self, name, max(0, min(10, value)))
+        if type(data.get("zen_mode")) is bool:
+            self.zen_mode = data["zen_mode"]
         theme = data.get("theme_name")
-        if theme in self.themes:
-               self.apply_theme(theme)
-     except Exception:
-        pass   
+        if isinstance(theme, str) and theme in self.themes:
+            self.apply_theme(theme)
 
     def save(self):
-     data = {
-        "music_volume": self.music_volume,
-        "effects_volume": self.effects_volume,
-        "theme_name": self.theme_name,
-        "zen_mode":self.zen_mode
-    }
-     self.settings_file.write_text(json.dumps(data))
+        return write_json(self.settings_file, {
+            "music_volume": self.music_volume,
+            "effects_volume": self.effects_volume,
+            "theme_name": self.theme_name,
+            "zen_mode": self.zen_mode,
+        })
 
     def apply_theme(self, name):
      self.theme_name = name

@@ -1,11 +1,10 @@
-import json
-from pathlib import Path
+from save_paths import get_save_path, read_json, write_json
 from datetime import date
 
 
 class Leaderboard:
     def __init__(self, file_name="leaderboard.json"):
-        self.path = Path(__file__).resolve().parent / file_name
+        self.path = get_save_path(file_name)
         self.data = {
             "all_time": [],
             "daily": []
@@ -13,19 +12,30 @@ class Leaderboard:
         self.load()
 
     def load(self):
-        if self.path.exists():
-            try:
-                with open(self.path, "r", encoding="utf-8") as file:
-                    self.data = json.load(file)
-            except json.JSONDecodeError:
-                self.data = {
-                    "all_time": [],
-                    "daily": []
-                }
+        data = read_json(self.path)
+        for key in ("all_time", "daily"):
+            records = data.get(key, [])
+            self.data[key] = []
+            if not isinstance(records, list):
+                continue
+            for record in records:
+                if not isinstance(record, dict):
+                    continue
+                name, score, day = (record.get(field) for field in ("name", "score", "date"))
+                if not isinstance(name, str) or type(score) is not int or score < 0:
+                    continue
+                if not isinstance(day, str):
+                    continue
+                try:
+                    date.fromisoformat(day)
+                except ValueError:
+                    continue
+                self.data[key].append({"name": name.upper()[:10], "score": score, "date": day})
+        self._clean_daily(date.today().isoformat())
+        self._sort_and_limit()
 
     def save(self):
-        with open(self.path, "w", encoding="utf-8") as file:
-            json.dump(self.data, file, ensure_ascii=False, indent=4)
+        return write_json(self.path, self.data)
 
     def add_score(self, name, score):
         today = date.today().isoformat()
