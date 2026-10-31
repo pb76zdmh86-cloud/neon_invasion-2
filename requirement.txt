@@ -1,3 +1,0 @@
-for the game you must install:
-pygame-ce
-numpy
