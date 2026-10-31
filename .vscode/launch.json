@@ -1,0 +1,13 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Python: Neon Invasion",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/alien_invasion.py",
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}"
+    }
+  ]
+}

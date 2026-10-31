@@ -1,0 +1,19 @@
+# Служебные файлы Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# macOS
+.DS_Store
+
+# Локальные сохранения игры
+player_profile.json
+highscore.json
+leaderboard.json
+settings.json
+
+# Переменные окружения
+.env
+.env.*
+!.env.example
